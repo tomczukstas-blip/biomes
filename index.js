@@ -1,39 +1,64 @@
 
-const { Client, GatewayIntentBits, Events } = require("discord.js");
-const http = require("node:http");
+const { Client, GatewayIntentBits, Events } = require('discord.js');
+const express = require('express');
 
-// Render keep-alive HTTP server
-const PORT = process.env.PORT || 10000;
+const app = express();
+const port = process.env.PORT || 3000;
 
-http.createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("BIOMESBLOCKMC Bot is running!");
-}).listen(PORT, "0.0.0.0", () => {
-    console.log(`HTTP server running on port ${PORT}`);
+// HTTP SERVER - RENDER
+app.get('/', (req, res) => {
+    res.send('Status: 200 OK. BIOMESBLOCKMC działa i nasłuchuje!');
 });
 
-// Discord bot
+app.listen(port, () => {
+    console.log(`[System] Serwer HTTP uruchomiony na porcie ${port}`);
+});
+
+// DISCORD CLIENT
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildPresences
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions
     ]
 });
 
-// Weryfikacja
-require("./weryfikacja")(client);
+// MODUŁY BOTA
+const moduly = [
+    'weryfikacja.js',
+];
 
-// Bot ready
-client.once(Events.ClientReady, (bot) => {
-    console.log(`Bot zalogowany jako ${bot.user.tag}`);
-    console.log("BIOMESBLOCKMC BOT ONLINE");
-    console.log("System weryfikacji: ZAŁADOWANY");
+console.log('--- Ładowanie modułów BIOMESBLOCKMC ---');
+
+moduly.forEach(plik => {
+    try {
+        require(`./${plik}`)(client);
+        console.log(`Załadowano moduł: ${plik}`);
+    } catch (error) {
+        console.error(`Błąd podczas ładowania modułu ${plik}:`, error);
+    }
 });
 
-// Logowanie
-client.login(process.env.DISCORD_KEY).catch((error) => {
-    console.error("Nie udało się zalogować:", error);
+console.log('----------------------------------------');
+
+// BOT READY
+client.once(Events.ClientReady, (bot) => {
+    console.log(`Połączono z Discordem! Zalogowano jako: ${bot.user.tag}`);
+    console.log('BIOMESBLOCKMC BOT ONLINE');
+});
+
+// ANTI-SLEEP
+const SERVER_URL = 'https://biomes.onrender.com';
+
+setInterval(() => {
+    fetch(SERVER_URL)
+        .then(res => console.log(`[Anti-Sleep] Ping wysłany. Status: ${res.status}`))
+        .catch(err => console.error('[Anti-Sleep] Błąd pingu:', err.message));
+}, 8 * 60 * 1000);
+
+// LOGOWANIE BOTA
+client.login(process.env.DISCORD_KEY).catch(err => {
+    console.error('Błąd logowania do Discorda. Sprawdź DISCORD_KEY w Render.', err);
 });
